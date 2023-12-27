@@ -18,12 +18,15 @@
 #include "olap/wal_writer.h"
 
 #include <atomic>
+#include <condition_variable>
+#include <memory>
 
 #include "common/config.h"
 #include "io/fs/file_writer.h"
 #include "io/fs/local_file_system.h"
 #include "io/fs/path.h"
 #include "olap/storage_engine.h"
+#include "olap/wal_manager.h"
 #include "util/crc32c.h"
 
 namespace doris {
@@ -31,9 +34,7 @@ namespace doris {
 const char* k_wal_magic = "WAL1";
 const uint32_t k_wal_magic_length = 4;
 
-WalWriter::WalWriter(const std::string& file_name,
-                     const std::shared_ptr<std::atomic_size_t>& all_wal_disk_bytes)
-        : _file_name(file_name), _disk_bytes(0), _all_wal_disk_bytes(all_wal_disk_bytes) {}
+WalWriter::WalWriter(const std::string& file_name) : _file_name(file_name) {}
 
 WalWriter::~WalWriter() {}
 
@@ -51,12 +52,6 @@ Status WalWriter::finalize() {
 }
 
 Status WalWriter::append_blocks(const PBlockArray& blocks) {
-    {
-        std::unique_lock l(_mutex);
-        while (_all_wal_disk_bytes->load(std::memory_order_relaxed) > config::wal_max_disk_size) {
-            cv.wait_for(l, std::chrono::milliseconds(WalWriter::MAX_WAL_WRITE_WAIT_TIME));
-        }
-    }
     size_t total_size = 0;
     for (const auto& block : blocks) {
         total_size += LENGTH_SIZE + block->ByteSizeLong() + CHECKSUM_SIZE;
@@ -82,11 +77,6 @@ Status WalWriter::append_blocks(const PBlockArray& blocks) {
                 "failed to write block to wal expected= " + std::to_string(total_size) +
                 ",actually=" + std::to_string(offset));
     }
-    _disk_bytes.store(_disk_bytes.fetch_add(total_size, std::memory_order_relaxed),
-                      std::memory_order_relaxed);
-    _all_wal_disk_bytes->store(
-            _all_wal_disk_bytes->fetch_add(total_size, std::memory_order_relaxed),
-            std::memory_order_relaxed);
     return Status::OK();
 }
 
