@@ -52,22 +52,49 @@ subprocess.run(["git", "config", "user.name", "Your Name"], cwd=repo_dir)
 
 # Execute the cherry-pick operation
 try:
-    result = subprocess.run(["git", "cherry-pick", merge_commit_sha], cwd=repo_dir, check=True)
-    print(f"Successfully cherry-picked commit {merge_commit_sha} into {new_branch_name}.")
-
-    # Push the new branch
-    subprocess.run(["git", "push", "origin", new_branch_name], cwd=repo_dir)
-
-    # Create a new PR for the cherry-picked changes
-    new_pr = repo.create_pull(
-        title=f"Auto-pick PR #{pr.number} into {TARGET_BRANCH}",
-        body=f"Cherry-pick of commits from PR #{pr.number} into {TARGET_BRANCH}.",
-        head=new_branch_name,
-        base=TARGET_BRANCH
+    result = subprocess.run(
+        ["git", "cherry-pick", merge_commit_sha],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+        text=True
     )
-    print(f"Created a new PR #{new_pr.number} for cherry-picked changes.")
-except subprocess.CalledProcessError:
+    print(f"Successfully cherry-picked commit {merge_commit_sha} into {new_branch_name}.")
+    
+    # Check for new commits
+    commit_check = subprocess.run(
+        ["git", "rev-list", "--count", f"{TARGET_BRANCH}..{new_branch_name}"],
+        cwd=repo_dir,
+        capture_output=True,
+        text=True
+    )
+    
+    if int(commit_check.stdout.strip()) > 0:
+        # Push the new branch
+        push_result = subprocess.run(
+            ["git", "push", "origin", new_branch_name],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True
+        )
+        
+        if push_result.returncode == 0:
+            # Create a new PR for the cherry-picked changes
+            new_pr = repo.create_pull(
+                title=f"Auto-pick PR #{pr.number} into {TARGET_BRANCH}",
+                body=f"Cherry-pick of commits from PR #{pr.number} into {TARGET_BRANCH}.",
+                head=new_branch_name,
+                base=TARGET_BRANCH
+            )
+            print(f"Created a new PR #{new_pr.number} for cherry-picked changes.")
+        else:
+            print(f"Failed to push the new branch: {push_result.stderr.strip()}")
+    else:
+        print(f"No new commits to create a PR from {new_branch_name}.")
+
+except subprocess.CalledProcessError as e:
     print(f"Conflict occurred while cherry-picking commit {merge_commit_sha}.")
+    print(f"Cherry-pick error: {e.stderr.strip()}")
     # Add conflict label
     pr.add_to_labels(CONFLICT_LABEL)
     print(f"Added label '{CONFLICT_LABEL}' to PR #{pr.number} due to conflict.")
