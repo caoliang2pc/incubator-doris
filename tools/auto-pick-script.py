@@ -37,9 +37,9 @@ base_branch = repo.get_branch(TARGET_BRANCH)
 new_branch_name = f'auto-pick-{pr.number}-{TARGET_BRANCH}'
 repo.create_git_ref(ref=f'refs/heads/{new_branch_name}', sha=base_branch.commit.sha)
 print(f"Created new branch {new_branch_name} from {TARGET_BRANCH}.")
-
+git config --global credential.helper store
 # Clone the repository locally and switch to the new branch
-repo_url = f"git@github.com:{REPO_NAME}.git"  # Use SSH URL
+repo_url = f"https://github.com/{REPO_NAME}.git"
 subprocess.run(["git", "clone", repo_url])
 repo_dir = REPO_NAME.split("/")[-1]  # Get the directory name
 subprocess.run(["git", "checkout", new_branch_name], cwd=repo_dir)
