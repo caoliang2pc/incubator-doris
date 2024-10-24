@@ -5,7 +5,7 @@ import subprocess
 
 # Get GitHub personal access token and other parameters
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-REPO_NAME = os.getenv('REPO_NAME', 'apache/doris')  # Default repository name
+REPO_NAME = os.getenv('REPO_NAME', 'CalvinKirs/incubator-doris')  # Default repository name
 CONFLICT_LABEL = os.getenv('CONFLICT_LABEL', 'cherry-pick-conflict')  # Conflict label from environment variable
 
 # Check if the required command-line arguments are provided
@@ -40,7 +40,7 @@ print(f"Created new branch {new_branch_name} from {TARGET_BRANCH}.")
 subprocess.run(["git", "config", "--global", "credential.helper", "store"], check=True)
 
 # Clone the repository locally and switch to the new branch
-repo_url = f"https://github.com/{REPO_NAME}.git"
+repo_url = f"https://x-access-token:{GITHUB_TOKEN}@github.com/{REPO_NAME}.git"
 subprocess.run(["git", "clone", repo_url])
 repo_dir = REPO_NAME.split("/")[-1]  # Get the directory name
 subprocess.run(["git", "checkout", new_branch_name], cwd=repo_dir)
