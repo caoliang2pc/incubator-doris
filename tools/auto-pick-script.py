@@ -70,11 +70,12 @@ try:
 
         # Create a new PR for the cherry-picked changes
         new_pr = repo.create_pull(
-            title=f"Auto-pick PR #{pr.number} into {TARGET_BRANCH}",
-            body=f"Cherry-pick of commits from PR #{pr.number} into {TARGET_BRANCH}.",
-            head=new_branch_name,
-            base=TARGET_BRANCH
+    title=f"{TARGET_BRANCH}: {pr.title}",  # Prefix with branch name
+    body=pr.body,  # Keep the original PR body
+    head=new_branch_name,
+    base=TARGET_BRANCH
         )
+
         print(f"Created a new PR #{new_pr.number} for cherry-picked changes.")
     else:
         print(f"Commit {merge_commit_sha} was not found in {new_branch_name} after cherry-picking.")
