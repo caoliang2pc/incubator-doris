@@ -6,6 +6,11 @@ on:
       - closed
     branches:
       - master
+permissions:
+  checks: write
+  contents: write
+  pull-requests: write
+  repository-projects: write
 
 jobs:
   auto_cherry_pick:
